@@ -72,21 +72,34 @@ data_diab <- data_result[grep("DIAB", data_result$Variables),]        ##data_dia
 dim(unique(subset(data_diab, Values==1)[,c(1,3)]))                    ##(?? Returns number of participants who are diabetic)
 dim(subset(data_diab[grep("DIAB1", data_diab$Variables),],Values==1)) ##(?? Returns number of participants who are initially diabetic)
 
-## Compute and plot changes in glucose when participant becomes diabetic
-data_diff<-data.frame(Ages=c(),Diff=c())                              ##(?? Pre-allocate with number of participants who become diabetic)
-data_fgluc2<-data_fgluc
-#colnames(data_fgluc2)<-c("")
-data_temp<-merge(data_diab,data_fgluc2)                               ##data_fluc2 is data_gluc with renamed columns
-for(i in 1:dim(data_temp)[1]){
-  currentID <- data_temp[i,1]
-  previousID <- data_temp[i-1,1]
-  currentstatus <- data_temp[i,4]
-  previousstatus <- data_temp[i-1,4]
-  if(currentID == previousID && currentstatus==1 && previousstatus==0){ ##if(participant became diabetic)
-    diff<-data_temp[i,6] - data_temp[i-1,6]                             ##diff = change in glucose level 
-    age <- data_temp[i, 2]                                              ##age = age at which they test diabetic
-    data_diff<-rbind(data_diff,cbind(age,diff))                         ##(?? Just use c for age and diff)
+## Compute and plot changes in glucose when participant becomes diabetic                            
+colnames(data_bls)<-c("BValues","BVariables","ID","Ages","Dates")
+data_db_orig<-merge(data_dm,data_bls)                                 ##Original Cohort
+colnames(data_fgluc)<-c("FValues","FVariables","ID","Ages","Dates")
+data_db_offs<-merge(data_diab,data_fgluc)                             ##Offspring Cohort
+
+## diffbls: data -> data_diff 
+## Given data with diabetes status and blood glucose level,
+## output data_diff with age turned diabetic "Ages" and change in blood glucose level from previous exam "Diff"
+diffinbls = function(data){
+  data_diff<-data.frame()                                                 ##(?? Pre-allocate with number of participants who become diabetic)
+  for(i in 1:dim(data)[1]){
+    currentID <- data[i,1]
+    previousID <- data[i-1,1]
+    currentstatus <- data[i,4]
+    previousstatus <- data[i-1,4]
+    if(currentID == previousID && currentstatus==1 && previousstatus==0){ ##if(participant became diabetic)
+      diff<-data[i,6] - data[i-1,6]                                       ##diff = change in glucose level 
+      age <- data[i, 2]                                                   ##age = age at which they test diabetic
+      data_diff<-rbind(data_diff,c(age,diff))                             
+    }
   }
+  colnames(data_diff)<-c("Ages","Diff")
+  return(data_diff)
 }
-colnames(data_diff)<-c("Ages","Diff")
-plot(data_diff$Ages,data_diff$Diff)
+
+data_diff_orig<-diffinbls(data_db_orig)
+plot(data_diff_orig$Ages, data_diff_orig$Diff)
+data_diff_offs<-diffinbls(data_db_offs)
+plot(data_diff_offs$Ages, data_diff_offs$Diff)
+
